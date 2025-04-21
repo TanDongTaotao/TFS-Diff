@@ -1,0 +1,98 @@
+{
+    "name": "TFS-Diff",
+    "phase": "train",
+    "gpu_ids": [0],
+    "path": {
+        "log": "logs",
+        "tb_logger": "tb_logger",
+        "results": "results",
+        "checkpoint": "checkpoint",
+        "resume_state": null
+    },
+    "datasets": {
+        "train": {
+            "name": "Medical_Dataset",
+            "mode": "LRHR",
+            "dataroot": "data/train",
+            "datatype": "Fusion",
+            "l_resolution": 128,
+            "r_resolution": 256,
+            "batch_size": 4,
+            "num_workers": 8,
+            "use_shuffle": true,
+            "data_len": -1
+        },
+        "val": {
+            "name": "Medical_Dataset",
+            "mode": "LRHR",
+            "dataroot": "data/val",
+            "datatype": "Fusion",
+            "l_resolution": 128,
+            "r_resolution": 256,
+            "data_len": 100
+        }
+    },
+    "model": {
+        "which_model_G": "tfs",
+        "finetune_norm": false,
+        "unet": {
+            "in_channel": 6,
+            "out_channel": 3,
+            "inner_channel": 64,
+            "norm_groups": 32,
+            "channel_multiplier": [1, 2, 4, 8, 8],
+            "attn_res": [16],
+            "res_blocks": 2,
+            "dropout": 0.2
+        },
+        "diffusion": {
+            "image_size": 256,
+            "channels": 3,
+            "conditional": true
+        },
+        "beta_schedule": {
+            "train": {
+                "schedule": "linear",
+                "n_timestep": 2000,
+                "linear_start": 1e-6,
+                "linear_end": 1e-2
+            },
+            "val": {
+                "schedule": "linear",
+                "n_timestep": 2000,
+                "linear_start": 1e-6,
+                "linear_end": 1e-2
+            }
+        },
+        "use_trimodal_refiner": true,
+        "trimodal_refiner_config": {
+            "in_channel": 3,
+            "out_channel": 3,
+            "dim": 36,
+            "num_blocks": [2, 2],
+            "num_refinement_blocks": 2,
+            "heads": [1, 2, 4, 8],
+            "ffn_expansion_factor": 2.66,
+            "bias": false,
+            "LayerNorm_type": "WithBias"
+        }
+    },
+    "train": {
+        "n_iter": 1000000,
+        "val_freq": 5000,
+        "save_checkpoint_freq": 5000,
+        "print_freq": 200,
+        "optimizer": {
+            "type": "adam",
+            "lr": 1e-4
+        },
+        "ema_scheduler": {
+            "step_start_ema": 5000,
+            "update_ema_every": 1,
+            "ema_decay": 0.9999
+        }
+    },
+    "wandb": {
+        "project": "TFS-Diff"
+    }
+}

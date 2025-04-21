@@ -75,9 +75,42 @@ totensor = torchvision.transforms.ToTensor()
 hflip = torchvision.transforms.RandomHorizontalFlip()
 def transform_augment(img_list, split='val', min_max=(0, 1)):    
     imgs = [totensor(img) for img in img_list]
+    
+    # 检查图像尺寸，分组处理不同分辨率的图像
+    lr_imgs = []
+    sr_imgs = []
+    hr_imgs = []
+    
+    # 根据图像尺寸分组
+    for img in imgs:
+        if img.shape[1] == 128 and img.shape[2] == 128:  # LR图像
+            lr_imgs.append(img)
+        elif img.shape[1] == 256 and img.shape[2] == 256:  # SR或HR图像
+            if len(sr_imgs) < 3:  # 前3个256x256图像是SR
+                sr_imgs.append(img)
+            else:  # 最后一个256x256图像是HR
+                hr_imgs.append(img)
+    
+    # 分别处理不同分辨率的图像组
     if split == 'train':
-        imgs = torch.stack(imgs, 0)
-        imgs = hflip(imgs)
-        imgs = torch.unbind(imgs, dim=0)
-    ret_img = [img * (min_max[1] - min_max[0]) + min_max[0] for img in imgs]
+        if lr_imgs:
+            lr_stack = torch.stack(lr_imgs, 0)
+            lr_stack = hflip(lr_stack)
+            lr_imgs = torch.unbind(lr_stack, dim=0)
+        
+        if sr_imgs:
+            sr_stack = torch.stack(sr_imgs, 0)
+            sr_stack = hflip(sr_stack)
+            sr_imgs = torch.unbind(sr_stack, dim=0)
+            
+        if hr_imgs:
+            hr_stack = torch.stack(hr_imgs, 0)
+            hr_stack = hflip(hr_stack)
+            hr_imgs = torch.unbind(hr_stack, dim=0)
+    
+    # 合并处理后的图像列表
+    processed_imgs = list(lr_imgs) + list(sr_imgs) + list(hr_imgs)
+    
+    # 应用min_max缩放
+    ret_img = [img * (min_max[1] - min_max[0]) + min_max[0] for img in processed_imgs]
     return ret_img

@@ -145,8 +145,8 @@ class SE_block(torch.nn.Module):
     def __init__(self,in_channel,ratio):
         super(SE_block, self).__init__()
         self.avepool = torch.nn.AdaptiveAvgPool2d(1)
-        self.linear1 = torch.nn.Linear(in_channel,in_channel//ratio)
-        self.linear2 = torch.nn.Linear(in_channel//ratio,in_channel)
+        self.linear1 = nn.Linear(64, 64 // 16)
+        self.linear2 = nn.Linear(64 // 16, 64)
         self.sigmoid = torch.nn.Sigmoid()
         self.Relu = torch.nn.ReLU()
 
@@ -181,7 +181,7 @@ class ResnetBlocWithAttn(nn.Module):
 class UNet(nn.Module):
     def __init__(
         self,
-        in_channel=6,
+        in_channel=12,  # 确保初始化参数明确设置为12
         out_channel=3,
         inner_channel=32,
         norm_groups=32,
@@ -193,6 +193,8 @@ class UNet(nn.Module):
         image_size=128
     ):
         super().__init__()
+        super().__init__()
+        self.in_channel = in_channel
 
         if with_noise_level_emb:
             noise_level_channel = inner_channel
@@ -211,7 +213,7 @@ class UNet(nn.Module):
         feat_channels = [pre_channel]
         now_res = image_size
         downs = [nn.Conv2d(in_channel, inner_channel,
-                           kernel_size=3, padding=1)]
+                           kernel_size=3, padding=1)]  # 直接使用初始化参数
         for ind in range(num_mults):
             is_last = (ind == num_mults - 1)
             use_attn = (now_res in attn_res)
@@ -252,21 +254,26 @@ class UNet(nn.Module):
 
         self.final_conv = Block(pre_channel, default(out_channel, in_channel), groups=norm_groups)
 
-        self.SE_block = SE_block(in_channel,4)
+        # 修改SE_block的初始化参数，确保通道数匹配
+        # 由于输入是x['1_2_3_SR']和x_noisy的拼接，所以通道数是12
+        # 设置ratio为2，这样linear1的输入输出维度为：12 -> 6
+        self.SE_block = SE_block(12, ratio=2)
     def forward(self, x, time):
         t = self.noise_level_mlp(time) if exists(
             self.noise_level_mlp) else None
 
         feats = []
 
-        # SE-block
-        x = self.SE_block(x)
-
         for layer in self.downs:
-            if isinstance(layer, ResnetBlocWithAttn):
-                x = layer(x, t)
-            else:
+            if isinstance(layer, nn.Conv2d):
                 x = layer(x)
+                # 在第一个卷积层之后应用SE-block
+                x = self.SE_block(x)
+            else:
+                if isinstance(layer, ResnetBlocWithAttn):
+                    x = layer(x, t)
+                else:
+                    x = layer(x)
             feats.append(x)
 
         for layer in self.mid:

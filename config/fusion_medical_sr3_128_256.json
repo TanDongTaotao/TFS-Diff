@@ -10,7 +10,7 @@
         "results": "results",
         "checkpoint": "checkpoint",
         // "resume_state": "/home/xys/MICCAI2024/VIS-IR-Super-Resolution-via-Iterative-Refinement/experiments/Tri_Medical_FS_128_256_240303_163649/checkpoint/I10000_E1250"
-        "resume_state": "F:\\PycharmProjects\\TFS-Diff\\experiments\\Tri_Medical_FS_128_256_250318_105827\\checkpoint/I490000_E61250" //checkpoint path
+        "resume_state": "F:\\PycharmProjects\\TFS-Diff\\checkpoint\\I490000_E61250" //checkpoint path
         // "resume_state": "experiments/sr_ffhq_210806_204158/checkpoint/I640000_E37" //pretrain model or training state
     },
     "datasets": {

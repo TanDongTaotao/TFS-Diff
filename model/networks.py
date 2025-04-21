@@ -86,10 +86,13 @@ def define_G(opt):
         from .ddpm_modules import diffusion, unet
     elif model_opt['which_model_G'] == 'sr3':
         from .sr3_modules import diffusion, unet
+    elif model_opt['which_model_G'] == 'tfs':
+        from .sr3_modules import unet
+        from .modules import tfs_diffusion
     if ('norm_groups' not in model_opt['unet']) or model_opt['unet']['norm_groups'] is None:
         model_opt['unet']['norm_groups']=32
     model = unet.UNet(
-        in_channel=model_opt['unet']['in_channel'],
+        in_channel=12,  # 显式设置输入通道为12
         out_channel=model_opt['unet']['out_channel'],
         norm_groups=model_opt['unet']['norm_groups'],
         inner_channel=model_opt['unet']['inner_channel'],
@@ -99,14 +102,33 @@ def define_G(opt):
         dropout=model_opt['unet']['dropout'],
         image_size=model_opt['diffusion']['image_size']
     )
-    netG = diffusion.GaussianDiffusion(
-        model,
-        image_size=model_opt['diffusion']['image_size'],
-        channels=model_opt['diffusion']['channels'],
-        loss_type='l1',    # L1 or L2
-        conditional=model_opt['diffusion']['conditional'],
-        schedule_opt=model_opt['beta_schedule']['train']
-    )
+    
+    # 根据模型类型选择不同的扩散模型实现
+    if model_opt['which_model_G'] == 'tfs':
+        # 使用三模态精细化网络的扩散模型
+        use_trimodal_refiner = model_opt.get('use_trimodal_refiner', True)
+        trimodal_refiner_config = model_opt.get('trimodal_refiner_config', None)
+        
+        netG = tfs_diffusion.TFSDiffusion(
+            model,
+            image_size=model_opt['diffusion']['image_size'],
+            channels=model_opt['diffusion']['channels'],
+            loss_type='l1',    # L1 or L2
+            conditional=model_opt['diffusion']['conditional'],
+            schedule_opt=model_opt['beta_schedule']['train'],
+            use_trimodal_refiner=use_trimodal_refiner,
+            trimodal_refiner_config=trimodal_refiner_config
+        )
+    else:
+        # 使用原始扩散模型
+        netG = diffusion.GaussianDiffusion(
+            model,
+            image_size=model_opt['diffusion']['image_size'],
+            channels=model_opt['diffusion']['channels'],
+            loss_type='l1',    # L1 or L2
+            conditional=model_opt['diffusion']['conditional'],
+            schedule_opt=model_opt['beta_schedule']['train']
+        )
     if opt['phase'] == 'train':
         # init_weights(netG, init_type='kaiming', scale=0.1)
         init_weights(netG, init_type='orthogonal')
