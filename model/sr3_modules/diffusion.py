@@ -149,7 +149,7 @@ class GaussianDiffusion(nn.Module):
             # self.set_new_noise_schedule(schedule_opt)
 
     def set_loss(self, device):
-        self.ssim_loss =kornia.losses.SSIM(11, reduction='mean')
+        self.ssim_loss =kornia.losses.SSIM(11)
         if self.loss_type == 'l1':
             self.loss_func = nn.L1Loss(reduction='sum').to(device)
         elif self.loss_type == 'l2':
