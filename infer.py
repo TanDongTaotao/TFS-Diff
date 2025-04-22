@@ -1,3 +1,11 @@
+'''
+    图像超分辨率推理
+    输入：低分辨率图像
+    输出：高分辨率图像
+    主要功能：
+    使用训练好的模型生成高分辨率图像
+    支持多种日志记录方式（文件日志、Tensorboard、Wandb）
+'''
 import torch
 import data as Data
 import model as Model
@@ -11,7 +19,7 @@ import os
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', type=str, default='config/sr_sr3_64_512.json',
+    parser.add_argument('-c', '--config', type=str, default='config/fusion_medical_sr3_128_256.json',
                         help='JSON file for configuration')
     parser.add_argument('-p', '--phase', type=str, choices=['val'], help='val(generation)', default='val')
     parser.add_argument('-gpu', '--gpu_ids', type=str, default=None)
@@ -52,6 +60,26 @@ if __name__ == "__main__":
 
     # model
     diffusion = Model.create_model(opt)
+    
+    # 添加权重检查和加载
+    if not opt['path']['resume_state']:
+        logger.error('未指定模型权重文件路径！请在配置文件中设置 path.resume_state')
+        exit(1)
+    
+    weight_path = opt['path']['resume_state'] + '_gen.pth'
+    if not os.path.exists(weight_path):
+        logger.error('模型权重文件不存在：{}'.format(weight_path))
+        exit(1)
+    
+    # 加载预训练权重
+    try:
+        state_dict = torch.load(weight_path)
+        diffusion.netG.load_state_dict(state_dict)
+        logger.info('成功加载模型权重：{}'.format(weight_path))
+    except Exception as e:
+        logger.error('加载模型权重失败：{}'.format(str(e)))
+        exit(1)
+        
     logger.info('Initial Model Finished')
 
     diffusion.set_new_noise_schedule(

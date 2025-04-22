@@ -158,23 +158,18 @@ class DDPM(BaseModel):
             'Saved model in [{:s}] ...'.format(gen_path))
 
     def load_network(self):
-        load_path = self.opt['path']['resume_state']
-        if load_path is not None:
-            logger.info(
-                'Loading pretrained model for G [{:s}] ...'.format(load_path))
-            gen_path = '{}_gen.pth'.format(load_path)
-            opt_path = '{}_opt.pth'.format(load_path)
-            # gen
+        try:
+            if self.opt['phase'] == 'train' and not self.opt['path']['resume_state']:
+                print("Starting new training...")
+                return
+
             network = self.netG
-            if isinstance(self.netG, nn.DataParallel):
-                network = network.module
-            network.load_state_dict(torch.load(
-                gen_path), strict=(not self.opt['model']['finetune_norm']))
-            # network.load_state_dict(torch.load(
-            #     gen_path), strict=False)
-            if self.opt['phase'] == 'train':
-                # optimizer
-                opt = torch.load(opt_path)
-                self.optG.load_state_dict(opt['optimizer'])
-                self.begin_step = opt['iter']
-                self.begin_epoch = opt['epoch']
+            load_path = self.opt['path'].get('pretrain_model_G', None)
+            if load_path is not None and os.path.exists(load_path):
+                print(f"Loading pretrained model from {load_path}")
+                network.load_state_dict(torch.load(load_path), strict=True)
+            else:
+                print("No pretrained model found, starting from scratch")
+        except Exception as e:
+            print(f"Error loading network: {e}")
+            print("Starting from scratch instead")
